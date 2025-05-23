@@ -1,0 +1,42 @@
+---
+- name: "task 1"
+  hosts: all
+  become: true
+
+  vars:
+    config_host: ./nginx.conf
+    config_vm: /etc/nginx/nginx.conf
+
+  tasks:
+    - name: "Установка nginx"
+      ansible.builtin.apt:    
+        name: nginx           
+        state: present        
+        update_cache: yes
+
+    - name: Копирование конфига nginx
+      ansible.builtin.copy:
+        src: "{{config_host}}"
+        dest: "{{config_vm}}"
+        owner: root
+        group: root
+        mode: '0644'
+        remote_src: no
+
+    - name: запуск nginx 
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      
+    - name: Проверка доступности nginx на порту 80
+      ansible.builtin.wait_for:
+        port: "80"
+        host: "{{ansible_host}}"
+        timeout: 5
+        delay: 2
+      register: http_check
+
+    - name: проверка
+      ansible.builtin.debug:
+        var: http_check
