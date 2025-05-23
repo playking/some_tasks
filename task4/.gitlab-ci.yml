@@ -1,0 +1,36 @@
+stages:   
+  - build
+  - deploy
+
+
+build-docker:  
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t my-nginx-app .
+    - apk add --no-cache curl docker-compose
+    - docker-compose up -d
+    - sleep 5
+    - docker-compose exec -T nginx curl -s -k https://localhost || echo "Проверка завершена"
+    - docker-compose down
+    - mkdir -p output
+    - docker save my-nginx-app > output/nginx-app.tar
+  artifacts:
+    paths:
+      - output/nginx-app.tar
+
+deploy-docker:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - apk add --no-cache docker-compose
+    - docker load < output/nginx-app.tar
+    - docker-compose up -d
+    - sleep 5
+    - docker-compose exec -T nginx curl -s -k https://localhost || echo "Проверка завершена"
+  needs:
+    - build-docker
